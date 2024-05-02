@@ -193,14 +193,13 @@ theorem edgeFunBL_surjective    {b l:ℕ} (go : Fin b → α → α) (fold : Fin
       tauto
       have : (Quot.out x.1).2 < (Quot.out x.1).1
         ∨ (Quot.out x.1).2 = (Quot.out x.1).1 := by exact lt_or_eq_of_le hik
-      cases this
-      rename_i h
-      exact h
-      exfalso
-      apply hl (fold (Quot.out x.1).1)
-      rename_i h
-      rw [h] at hx₁
-      tauto
+      cases this with
+      | inl h => exact h
+      | inr h =>
+        exfalso
+        apply hl (fold (Quot.out x.1).1)
+        rw [h] at hx₁
+        tauto
     ⟩
     simp
 
@@ -231,10 +230,10 @@ theorem edgeFun_surjective    {b l:ℕ} (go : Fin b → α → α) (fold : Fin l
       have : x.1 = Sym2.mk (Quot.out x.1) := by exact (Quot.out_eq x.1).symm
       rw [← this] at Q
       rw [Q] at hx₁
-      cases hx₁
-      . tauto
-      . exfalso
-        rename_i h
+      cases hx₁ with
+      | inl => tauto
+      | inr h =>
+        exfalso
         unfold pt_locF at h
         simp only [Bool.and_eq_true, decide_eq_true_eq] at h
         let R := h.1.2
@@ -261,19 +260,18 @@ theorem edgeFun_surjective    {b l:ℕ} (go : Fin b → α → α) (fold : Fin l
       have : x.1 = Sym2.mk (Quot.out x.1) := by exact (Quot.out_eq x.1).symm
       rw [← this] at Q
       rw [Q] at hx₁
-      cases hx₁
-      . exfalso
-        rename_i h
+      cases hx₁ with
+      | inr => tauto
+      | inl h =>
+        exfalso
         unfold pt_locF at h
         simp only [Bool.and_eq_true, decide_eq_true_eq] at h
         let R := h.1.2
-        have : i.1.succ < k.1 := R
         have : i.1.succ < i.1 := calc
           _ < k.1 := R
           _ ≤ _ := Nat.not_lt.mp hik
         contrapose this
         exact Nat.not_succ_lt_self
-      . tauto
     ⟩
     simp
 
@@ -285,14 +283,13 @@ theorem edgeFunBL_injective    {b l:ℕ} (go : Fin b → α → α) (fold : Fin 
   unfold edgeFunBL
   simp only [Subtype.mk.injEq, Sym2.eq, Sym2.rel_iff']
   intro h
-  cases h
-  . rename_i h_1
-    exact h_1
-  . exfalso
+  cases h with
+  | inl h_1 => exact h_1
+  | inr h_1 =>
+    exfalso
     unfold pt_locF_BL at *
     simp only [Bool.not_eq_true, Bool.and_eq_true, Finset.mem_filter, Finset.mem_univ,
       true_and] at *
-    rename_i h_1
     unfold Prod.swap at h_1
     have H₀: x.1 = y.2 := by rw [h_1]
     have H₁: x.2 = y.1 := by rw [h_1]
@@ -311,14 +308,13 @@ theorem edgeFun_injective    {b l:ℕ} (go : Fin b → α → α) (fold : Fin l 
   unfold edgeFun
   simp only [Subtype.mk.injEq, Sym2.eq, Sym2.rel_iff']
   intro h
-  cases h
-  . rename_i h_1
-    exact h_1
-  . exfalso
+  cases h with
+  | inl h_1 => exact h_1
+  | inr h_1 =>
+    exfalso
     unfold pt_locF at *
     simp only [Bool.and_eq_true, decide_eq_true_eq, Finset.mem_filter, Finset.mem_univ,
       true_and] at *
-    rename_i h_1
     unfold Prod.swap at h_1
     have H₀: x.1.1 = y.2.1 := by rw [h_1]
     have H₁: x.2.1 = y.1.1 := by rw [h_1]
