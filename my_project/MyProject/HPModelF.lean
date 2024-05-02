@@ -319,40 +319,42 @@ theorem global_orderliness_rotate {l:ℕ} (ph : Fin l.succ.succ → Bool)
   ∧
   fold' 1 = rect 0 (fold' 0)
  := by
-  cases rotate_until_right (f 0) -- 0
-  . exists fold;exists f; simp only [true_and];
+  cases rotate_until_right (f 0) with -- 0
+  | inl h =>
+    exists fold;exists f; simp only [true_and];
     let Q := (f 0).2; simp only [Fin.succ_zero_eq_one, Fin.castSucc_zero] at Q
-    rename_i h
     rw [h] at Q;exact Q
-  rename_i h
-  cases h -- 1
-  . exists (λ i ↦ rotate (fold i))
-    exists (λ i ↦ ⟨rotateIndex (f i),by rw [← rotate_basic,← (f i).2]⟩)
-    constructor
-    . unfold pts_tot'F;rw [funext (rotate_pts_at'F _ _)]
-    . let Q := (f 0).2; simp only [Fin.succ_zero_eq_one, Fin.castSucc_zero] at Q ;
-      simp only;rw [Q];(repeat rw [rotate_basic]);congr
-  rename_i h_1
-  cases h_1 -- 2, 3
-  . exists (λ i ↦ rotate (rotate (fold i)))
-    exists (λ i ↦ ⟨rotateIndex (rotateIndex (f i)),by
-      (repeat rw [← rotate_basic]);rw [← (f i).2]
-    ⟩)
-    constructor
-    . unfold pts_tot'F;rw [funext (rotate₂_pts_at'F _ _)]
-    . let Q := (f 0).2; simp only [Fin.succ_zero_eq_one, Fin.castSucc_zero] at Q ;congr;
-      simp only;rw [Q];repeat rw [rotate_basic]
-      congr
-  . exists (λ i ↦ rotate (rotate (rotate (fold i))))
-    exists (λ i ↦ ⟨rotateIndex (rotateIndex (rotateIndex (f i))),by
-      (repeat rw [← rotate_basic]);rw [← (f i).2]
-    ⟩)
-    constructor
-    . unfold pts_tot'F;rw [funext (rotate₃_pts_at'F _ _)]
-    . let Q := (f 0).2; simp only [Fin.succ_zero_eq_one, Fin.castSucc_zero] at Q ;
-      simp only;rw [Q];repeat rw [rotate_basic]
-      rename_i h
-      rw [h]
+  | inr h =>
+    cases h with -- 1
+    | inl h_1 =>
+      exists (λ i ↦ rotate (fold i))
+      exists (λ i ↦ ⟨rotateIndex (f i),by rw [← rotate_basic,← (f i).2]⟩)
+      constructor
+      . unfold pts_tot'F;rw [funext (rotate_pts_at'F _ _)]
+      . let Q := (f 0).2; simp only [Fin.succ_zero_eq_one, Fin.castSucc_zero] at Q ;
+        simp only;rw [Q];(repeat rw [rotate_basic]);congr
+    | inr h_1 =>
+      cases h_1 with -- 2, 3
+      | inl =>
+        exists (λ i ↦ rotate (rotate (fold i)))
+        exists (λ i ↦ ⟨rotateIndex (rotateIndex (f i)),by
+          (repeat rw [← rotate_basic]);rw [← (f i).2]
+        ⟩)
+        constructor
+        . unfold pts_tot'F;rw [funext (rotate₂_pts_at'F _ _)]
+        . let Q := (f 0).2; simp only [Fin.succ_zero_eq_one, Fin.castSucc_zero] at Q ;congr;
+          simp only;rw [Q];repeat rw [rotate_basic]
+          congr
+      | inr h =>
+        exists (λ i ↦ rotate (rotate (rotate (fold i))))
+        exists (λ i ↦ ⟨rotateIndex (rotateIndex (rotateIndex (f i))),by
+          (repeat rw [← rotate_basic]);rw [← (f i).2]
+        ⟩)
+        constructor
+        . unfold pts_tot'F;rw [funext (rotate₃_pts_at'F _ _)]
+        . let Q := (f 0).2; simp only [Fin.succ_zero_eq_one, Fin.castSucc_zero] at Q ;
+          simp only;rw [Q];repeat rw [rotate_basic]
+          rw [h]
 
 /-- The global perspective makes this easy.-/
 lemma global_orderliness_noninjective {l:ℕ}
@@ -419,22 +421,18 @@ lemma global_orderliness_reflect_2_of_nonzero {l:ℕ} (ph : Fin l.succ.succ → 
     (f (Fin.succ i)).1 = 1 ∨
     (f (Fin.succ i)).1 = 2 ∨
     (f (Fin.succ i)).1 = 3 := four_choices _
-  cases this
-  exfalso
-  tauto
-  rename_i h
-  cases h
-  have : (f (Fin.castSucc i)).1 = 0 := hi.2 (Fin.castSucc i) (le_refl _)
-  let Q := global_orderliness_noninjective fold f i
-  tauto
-  rename_i h_1
-  cases h_1
-  exists fold
-  exists f
-  tauto
-  rename_i h
-  let Q := global_orderliness_2_of_3 ph fold f h_inj i (And.intro h hi.2)
-  tauto
+  cases this with
+  | inl => exfalso; tauto
+  | inr h =>
+    cases h with
+    | inl =>
+      have : (f (Fin.castSucc i)).1 = 0 := hi.2 (Fin.castSucc i) (le_refl _)
+      let Q := global_orderliness_noninjective fold f i
+      tauto
+    | inr h_1 =>
+      cases h_1 with
+      | inl   => exists fold; exists f; tauto
+      | inr h => exact global_orderliness_2_of_3 ph fold f h_inj i (And.intro h hi.2)
 
 lemma global_orderliness_injective {l:ℕ} (ph : Fin l.succ.succ → Bool)
 (fold : Fin l.succ.succ → ℤ×ℤ) (f : isPathWitness rect fold)
@@ -446,56 +444,58 @@ lemma global_orderliness_injective {l:ℕ} (ph : Fin l.succ.succ → Bool)
   ∧
   Function.Injective fold'
  := by
-  cases rotate_until_right (f 0) -- 0
-  . exists fold;exists f; simp only [true_and];let Q := (f 0).2;
+  cases rotate_until_right (f 0) with -- 0
+  | inl h =>
+    exists fold;exists f; simp only [true_and];let Q := (f 0).2;
     simp only [Fin.succ_zero_eq_one, Fin.castSucc_zero] at Q
-    rename_i h
     rw [h] at Q;
     constructor
     exact Q
     exact h_inj
-  rename_i h
-  cases h -- 1
-  . exists (λ i ↦ rotate (fold i))
-    exists (λ i ↦ ⟨rotateIndex (f i),by rw [← rotate_basic,← (f i).2]⟩)
-    constructor
-    . unfold pts_tot'F;rw [funext (rotate_pts_at'F _ _)]
-    . let Q := (f 0).2; simp only [Fin.succ_zero_eq_one, Fin.castSucc_zero] at Q ;
-      simp only;rw [Q];(repeat rw [rotate_basic]);
+  | inr h =>
+    cases h with -- 1
+    | inl =>
+      exists (λ i ↦ rotate (fold i))
+      exists (λ i ↦ ⟨rotateIndex (f i),by rw [← rotate_basic,← (f i).2]⟩)
       constructor
-      congr
-      intro x y hxy
-      simp only at hxy
-      exact h_inj (rotate_injective hxy)
-  rename_i h_1
-  cases h_1 -- 2, 3
-  . exists (λ i ↦ rotate (rotate (fold i)))
-    exists (λ i ↦ ⟨rotateIndex (rotateIndex (f i)),by
-      (repeat rw [← rotate_basic]);rw [← (f i).2]
-    ⟩)
-    constructor
-    . unfold pts_tot'F;rw [funext (rotate₂_pts_at'F _ _)]
-    . let Q := (f 0).2; simp only [Fin.succ_zero_eq_one, Fin.castSucc_zero] at Q ;congr;
-      simp only;rw [Q];repeat rw [rotate_basic]
-      constructor
-      congr
-      intro x y hxy
-      simp only at hxy
-      exact h_inj (rotate_injective (rotate_injective hxy))
-  . exists (λ i ↦ rotate (rotate (rotate (fold i))))
-    exists (λ i ↦ ⟨rotateIndex (rotateIndex (rotateIndex (f i))),by
-      (repeat rw [← rotate_basic]);rw [← (f i).2]
-    ⟩)
-    constructor
-    . unfold pts_tot'F;rw [funext (rotate₃_pts_at'F _ _)]
-    . let Q := (f 0).2;simp only [Fin.succ_zero_eq_one, Fin.castSucc_zero] at Q ;
-      simp only;rw [Q];repeat rw [rotate_basic]
-      constructor
-      rename_i h
-      rw [h]
-      intro x y hxy
-      simp only at hxy
-      exact h_inj (rotate_injective (rotate_injective (rotate_injective hxy)))
+      . unfold pts_tot'F;rw [funext (rotate_pts_at'F _ _)]
+      . let Q := (f 0).2; simp only [Fin.succ_zero_eq_one, Fin.castSucc_zero] at Q ;
+        simp only;rw [Q];(repeat rw [rotate_basic]);
+        constructor
+        congr
+        intro x y hxy
+        simp only at hxy
+        exact h_inj (rotate_injective hxy)
+    | inr h_1 =>
+      cases h_1 with -- 2, 3
+      | inl =>
+        exists (λ i ↦ rotate (rotate (fold i)))
+        exists (λ i ↦ ⟨rotateIndex (rotateIndex (f i)),by
+          (repeat rw [← rotate_basic]);rw [← (f i).2]
+        ⟩)
+        constructor
+        . unfold pts_tot'F;rw [funext (rotate₂_pts_at'F _ _)]
+        . let Q := (f 0).2; simp only [Fin.succ_zero_eq_one, Fin.castSucc_zero] at Q ;congr;
+          simp only;rw [Q];repeat rw [rotate_basic]
+          constructor
+          congr
+          intro x y hxy
+          simp only at hxy
+          exact h_inj (rotate_injective (rotate_injective hxy))
+      | inr h =>
+        exists (λ i ↦ rotate (rotate (rotate (fold i))))
+        exists (λ i ↦ ⟨rotateIndex (rotateIndex (rotateIndex (f i))),by
+          (repeat rw [← rotate_basic]);rw [← (f i).2]
+        ⟩)
+        constructor
+        . unfold pts_tot'F;rw [funext (rotate₃_pts_at'F _ _)]
+        . let Q := (f 0).2;simp only [Fin.succ_zero_eq_one, Fin.castSucc_zero] at Q ;
+          simp only;rw [Q];repeat rw [rotate_basic]
+          constructor
+          rw [h]
+          intro x y hxy
+          simp only at hxy
+          exact h_inj (rotate_injective (rotate_injective (rotate_injective hxy)))
 
 theorem global_orderliness_reflect {l:ℕ} (ph : Fin l.succ.succ → Bool)
 (fold : Fin l.succ.succ → ℤ×ℤ) (f : isPathWitness rect fold)
