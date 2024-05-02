@@ -17,11 +17,10 @@ lemma sum_pred₀ (n:ℕ) : Finset.sum (Finset.range n) (λ k ↦ k-1) = (n-1)*(
       Nat.div_two_mul_two_of_even (by exact Nat.even_mul_self_pred (n-1)),
       ← Nat.mul_add
     ]
-    cases n
-    . simp
-
-    . simp only [Nat.succ_sub_succ_eq_sub, tsub_zero]
-      rename_i n_1
+    cases n with
+    | zero => simp
+    | succ n_1 =>
+      simp only [Nat.succ_sub_succ_eq_sub, tsub_zero]
       cases n_1
       . simp
       . simp
