@@ -3,14 +3,13 @@ import MyProject.HPModelF
 -- pathF' is like pathF but without the infinity
 def pathF'  {α β:Type} [OfNat α 0] {l:ℕ} (go : β → α → α)
   (moves : Fin l → β): Fin l.succ → α := by
-  induction l
-  intro
-  exact 0
-  intro i
-  rename_i n n_ih
-  by_cases h : i.1 < n.succ
-  exact                n_ih (λ j ↦ moves (Fin.castSucc j)) ⟨i.1,h⟩
-  exact go (moves n)  (n_ih (λ j ↦ moves (Fin.castSucc j)) n)
+  induction l with
+  | zero => intro;exact 0
+  | succ n n_ih =>
+    intro i
+    by_cases h : i.1 < n.succ
+    exact                n_ih (λ j ↦ moves (Fin.castSucc j)) ⟨i.1,h⟩
+    exact go (moves n)  (n_ih (λ j ↦ moves (Fin.castSucc j)) n)
 
 
 def pathM {α β:Type} [OfNat α 0] {l:ℕ} (go : β → α → α)
@@ -79,26 +78,24 @@ lemma sym_morfF {α:Type} [OfNat α 0] {l b:ℕ} {go : Fin b.succ → α → α}
   sym (pathF' go                 moves  k) =
       (pathF' go (morfF symIndex moves)) k
   := by
-  induction l
-  . -- zero
-    cases Nat.of_le_succ (Fin.is_le k)
-
-    . rename_i h
+  induction l with
+  | zero =>
+    let Q := Nat.of_le_succ (Fin.is_le k)
+    cases Q with
+    | inl h =>
       have : k = 0 := Fin.le_zero_iff.mp h
       subst this;unfold pathF';
       simp only [Fin.val_zero, Nat.lt_succ_self,
         Nat.cast_zero, dite_eq_ite, ite_true, Nat.zero_eq]
       rw [h0]
-
-    . rename_i h
+    | inr h =>
       have : k = 1 := Fin.ext h
       subst this;unfold pathF'; simp only [Fin.val_one, lt_self_iff_false,
         Nat.cast_zero, dite_eq_ite, ite_false, Nat.zero_eq]
       rw [sym_basic, h0]
       rfl
 
-  . -- succ
-    rename_i n n_ih
+  | succ n n_ih =>
     let Ri := n_ih (λ i ↦ moves (Fin.castSucc i))
     by_cases h : k.1 < n.succ.succ
 
@@ -225,27 +222,27 @@ theorem towards_orderlyishF
   let m₂ := (morfF rotateIndex m₁)
   let m₃ := (morfF rotateIndex m₂)
 
-  cases rotate_until_right (m₀ 0)
-  . exists m₀
-  . rename_i h
-    cases h
-    . exists m₁
-      rename_i h_1
+  cases rotate_until_right (m₀ 0) with
+  | inl => exists m₀
+  | inr h =>
+    cases h with
+    | inl h_1 =>
+      exists m₁
       constructor
       . rw [← h_1, rotate_headF]
       . exact rotate_pts_totF ph m₀
-    . rename_i h_1
-      cases h_1
-      . exists m₂
-        rename_i h
+    | inr h_1 =>
+      cases h_1 with
+      | inl h =>
+        exists m₂
         constructor
         . rw [← h];repeat rw[rotate_headF]
         . calc
               pts_tot'F κ ph (pathF' κ m₀)
             ≤ pts_tot'F κ ph (pathF' κ m₁) := rotate_pts_totF ph m₀
           _ ≤ pts_tot'F κ ph (pathF' κ m₂) := rotate_pts_totF ph m₁
-      . exists m₃
-        rename_i h
+      | inr h =>
+        exists m₃
         constructor
         . rw [← h];repeat rw[rotate_headF]
         . calc
@@ -280,18 +277,18 @@ theorem towards_orderlyF
         obtain ⟨j,hj⟩ := this
         by_cases h : j₁ < j
         -- now it's easy using morfF
-        cases hj.1 j₁ h
-        . rename_i h_1;intro hc;unfold morfF at hc;rw [h_1] at hc;contrapose hc;decide
-        . rename_i h_1;intro hc;unfold morfF at hc;rw [h_1] at hc;contrapose hc;decide
+        cases hj.1 j₁ h with
+        | inl h_1 => intro hc;unfold morfF at hc;rw [h_1] at hc;contrapose hc;decide
+        | inr h_1 => intro hc;unfold morfF at hc;rw [h_1] at hc;contrapose hc;decide
         by_cases he : j₁ = j
         . unfold morfF reflectIndex
           rw [he, hj.2];decide
 
         . have : j < j₁ ∨ j = j₁ ∨ j₁ < j := lt_trichotomy j j₁
           have : j < j₁ := by tauto
-          cases (hj₁ j this)
-          . rename_i h_1;unfold morfF at h_1;rw [hj.2] at h_1;contrapose h_1;decide
-          . rename_i h_1;unfold morfF at h_1;rw [hj.2] at h_1;contrapose h_1;decide
+          cases (hj₁ j this) with
+          | inl h_1 => unfold morfF at h_1;rw [hj.2] at h_1;contrapose h_1;decide
+          | inr h_1 => unfold morfF at h_1;rw [hj.2] at h_1;contrapose h_1;decide
       . calc
         _ ≤ pts_tot'F κ ph (pathF' κ moves₀) := hmoves₀.2
         _ ≤ _                                := reflect_pts_tot_morfF ph moves₀
