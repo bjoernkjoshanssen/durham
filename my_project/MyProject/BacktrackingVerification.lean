@@ -29,17 +29,15 @@ def Gap_nil'  (b n : ℕ)             : Gap b n n := ⟨[], by simp⟩
 def num_by_backtracking {k b L:ℕ}
   (P: List (Fin b) → Prop) [DecidablePred P]
   (Q: List (Fin b) → Prop) [DecidablePred Q]
-  (w : Gap b L.succ k) : ℕ :=
-by {
-  induction k
-  exact ((if (P w.1 ∧ Q w.1) then 1 else 0))   /- Base case -/
-  rename_i n n_ih
-  exact  /- Inductive case -/
-    (ite (P w.1)) (dite (n ≥ L.succ)
-      (λ h ↦                             n_ih (Gap_nil        h) )
-      (λ h ↦ List.sum (List.ofFn (λ a ↦ (n_ih (Gap_cons a w h)))))
-    ) 0
-}
+  (w : Gap b L.succ k) : ℕ := by
+  induction k with
+  | zero => exact ((if (P w.1 ∧ Q w.1) then 1 else 0))
+  | succ n n_ih =>
+    exact
+      (ite (P w.1)) (dite (n ≥ L.succ)
+        (λ h ↦                             n_ih (Gap_nil        h) )
+        (λ h ↦ List.sum (List.ofFn (λ a ↦ (n_ih (Gap_cons a w h)))))
+      ) 0
 
 /-- The list `w` is a suffix of `a :: w`, in the setting of the `Gap` types. -/
 theorem cons_suffix {b:ℕ} {L n_1: ℕ} {a : Fin b} (h: ¬n_1 ≥ Nat.succ L)
@@ -85,8 +83,8 @@ theorem branch_out'' (b:ℕ) {n L:ℕ} (M:MonoPred b)[DecidablePred M.P][Decidab
   num_by_backtracking M.P M.Q (w)
   = List.sum (List.ofFn (λ a ↦ num_by_backtracking M.P M.Q (Gap_cons a w hnL)))
   := by
-  cases n -- Note: "induction n" not needed
-  . -- zero
+  cases n with
+  | zero =>
     unfold num_by_backtracking
     simp only [ge_iff_le, nonpos_iff_eq_zero, Nat.zero_eq, Nat.sub_zero, dite_false,
       ite_eq_left_iff]
@@ -109,7 +107,7 @@ theorem branch_out'' (b:ℕ) {n L:ℕ} (M:MonoPred b)[DecidablePred M.P][Decidab
         exact hn.symm
     rw [this]
     apply List.sum_const_nat b 0
-  . -- succ
+  | succ n_1 =>
     unfold num_by_backtracking
     simp only [ge_iff_le, Nat.zero_eq, Nat.sub_zero]
     by_cases H : (M.P w.1)
@@ -126,7 +124,6 @@ theorem branch_out'' (b:ℕ) {n L:ℕ} (M:MonoPred b)[DecidablePred M.P][Decidab
                   if h : Nat.succ L ≤ n then        n_ih (Gap_nil h)
                   else List.sum (List.ofFn fun a => n_ih (Gap_cons a w h))
                 else 0)
-      rename_i n_1
       have : (List.ofFn fun a => if M.P (Gap_cons a w hnL).1 then
             if h : Nat.succ L ≤ n_1 then
               Recu n_1 (Gap_nil h)
@@ -235,10 +232,11 @@ lemma disjoint_from_last {α: Type} {n_1: ℕ} {p: Fin (Nat.succ n_1) → α →
 
 def getFin {n_1 : ℕ} {i: Fin (Nat.succ n_1)} (hin: ¬i = n_1) : Fin n_1 := by
   have : i.1 < n_1 := by
-    cases (Nat.lt_or_eq_of_le (Fin.is_le i));
-    . rename_i h; exact h;
-    . exfalso
-      rename_i h;have : i = n_1 := by apply Fin.ext; rw [h]; simp only [Fin.cast_nat_eq_last,
+    cases (Nat.lt_or_eq_of_le (Fin.is_le i)) with
+    | inl h => exact h
+    | inr h =>
+      exfalso
+      have : i = n_1 := by apply Fin.ext; rw [h]; simp only [Fin.cast_nat_eq_last,
         Fin.val_last]
       exact hin this
   exact ⟨i.1,this⟩
@@ -247,9 +245,10 @@ lemma distinguish_from_last {α: Type} {n_1: ℕ} {p: Fin (Nat.succ n_1) → α 
 : (∃ i, p (Fin.castSucc i) x) ∨ p (n_1) x ↔ ∃ i, p i x := by
   constructor;
   . -- mp
-    intro ha; cases ha;
-    . rename_i h;obtain ⟨i,hi⟩ := h;exists i;norm_cast
-    . exists n_1;
+    intro ha;
+    cases ha with
+    |inl h => obtain ⟨i,hi⟩ := h;exists i;norm_cast
+    |inr   => exists n_1
   . -- mpr
     intro ha; obtain ⟨i,hi⟩ := ha; by_cases hin:(i=n_1)
     . right; rw [← hin]; exact hi;
@@ -273,30 +272,28 @@ lemma disjoint_cast {α: Type} {n_1: ℕ} {p: Fin (Nat.succ n_1) → α → Prop
 theorem Fintype_card_subtype_or_disjoint' {α:Type} [Fintype α]
 {n:ℕ} (p : Fin n → α → Prop) -- January 30, 2024.
 [Fintype {x:α // ∃ i, p i x}] [∀ i, Fintype {x:α // p i x}]
-[DecidablePred fun x => ∃ i : Fin n.pred, p ⟨i,getFin_pred i⟩ x]
+[h₂: DecidablePred fun x => ∃ i : Fin n.pred, p ⟨i,getFin_pred i⟩ x]
 (h : ∀ i j, i ≠ j → Disjoint (p i) (p j))
 :
 List.sum (List.ofFn (λ i ↦ Fintype.card {x:α // p i x}))
-                         = Fintype.card {x:α // ∃ i, p i x}
-:= by {
-  induction n; simp only [Nat.zero_eq, List.ofFn_zero, List.sum_nil,
+                         = Fintype.card {x:α // ∃ i, p i x} := by
+  induction n with
+  |zero => simp only [Nat.zero_eq, List.ofFn_zero, List.sum_nil,
     IsEmpty.exists_iff, Fintype.card_eq_zero]
-  rename_i h₀ h₁ h₂
-  -- Requires several decidability facts:
-  obtain : DecidablePred fun x => ∃ i, p (Fin.castSucc i) x := h₂
-  rename_i n_1 n_ih
-  obtain : DecidablePred fun x : α => ∃ i : Fin n_1.pred, (fun i a => p (Fin.castSucc i) a) ⟨i.1, getFin_pred i⟩ x
-    := Classical.decPred _
-  obtain : Fintype { x : α // (∃ i, p (Fin.castSucc i) x) ∨ p (↑n_1) x } :=
-    Fintype.ofFinite { x // (∃ i, p (Fin.castSucc i) x) ∨ p (↑n_1) x }
+  |succ n_1 n_ih =>
+    -- Requires several decidability facts:
+    obtain : DecidablePred fun x => ∃ i, p (Fin.castSucc i) x := h₂
+    obtain : DecidablePred fun x : α => ∃ i : Fin n_1.pred, (fun i a => p (Fin.castSucc i) a) ⟨i.1, getFin_pred i⟩ x
+      := Classical.decPred _
+    obtain : Fintype { x : α // (∃ i, p (Fin.castSucc i) x) ∨ p (↑n_1) x } :=
+      Fintype.ofFinite { x // (∃ i, p (Fin.castSucc i) x) ∨ p (↑n_1) x }
 
-  rw [list_sum_ofFn_succ]
-  norm_cast
-  rw [
-    n_ih (λ i a ↦ p (Fin.castSucc i) a) (disjoint_cast h),
-    ← Fintype.card_subtype_or_disjoint _ _ (disjoint_from_last h)
-  ]; apply fincard_ext; exact distinguish_from_last
-}
+    rw [list_sum_ofFn_succ]
+    norm_cast
+    rw [
+      n_ih (λ i a ↦ p (Fin.castSucc i) a) (disjoint_cast h),
+      ← Fintype.card_subtype_or_disjoint _ _ (disjoint_from_last h)
+    ]; apply fincard_ext; exact distinguish_from_last
 
 
 lemma get_union {α :Type} {x y : List α} (h : x <:+ y) (hl : x.length < y.length) :
@@ -333,8 +330,8 @@ theorem backtracking_verification {k b L:ℕ}
   }
   = num_by_backtracking M.P M.Q w
   := by
-  induction k -- Since num_by_backtracking was defined by recursion, so is the proof.
-  . -- zero
+  induction k with -- Since num_by_backtracking was defined by recursion, so is the proof.
+  | zero =>
     unfold num_by_backtracking; simp only [Nat.zero_eq, Nat.sub_zero]
     by_cases hs : (M.P w.1 ∧ M.Q w.1)
     . -- pos
@@ -355,8 +352,7 @@ theorem backtracking_verification {k b L:ℕ}
       }
       have := Subtype.isEmpty_of_false this
       exact Fintype.card_eq_zero
-  . -- succ
-    rename_i n n_ih
+  | succ n n_ih =>
     by_cases case : (n ≥ L.succ)
     . -- pos
       exfalso
@@ -397,9 +393,9 @@ instance : DecidableEq (Gap b (Nat.succ L) 0)
 def those_with_suffix' {k b :ℕ} {L:ℕ} (P: List (Fin b) → Prop) [DecidablePred P]
   (Q: List (Fin b) → Prop) [DecidablePred Q] (w : Gap b L.succ k) : Finset (Gap b L.succ 0) :=
 by {
-  induction k
-  . exact ((ite (P w.1 ∧ Q w.1) {w} ∅))
-  . rename_i n n_ih
+  induction k with
+  | zero => exact ((ite (P w.1 ∧ Q w.1) {w} ∅))
+  | succ n n_ih =>
     exact
       (ite (P w.1))
       (
@@ -507,16 +503,15 @@ theorem verify_those_with_suffix' {k b :ℕ} {L:ℕ} (bound : k ≤ L.succ)
   those_with_suffix' M.P M.Q w = filter (
     λ v : Gap b L.succ 0 ↦ M.P v.1 ∧ M.Q v.1 ∧ w.1 <:+ v.1
   ) univ := by
-  induction k
-  . -- zero
+  induction k with
+  | zero =>
     unfold those_with_suffix'
     simp only [Nat.zero_eq, Nat.sub_zero, filter_congr_decidable]
     by_cases holds: (M.P w.1 ∧ M.Q w.1)
     . rw [if_pos holds]; exact filter_suffix_singleton holds
     . rw [if_neg holds]; exact filter_suffix_empty holds
 
-  . -- succ
-    rename_i n n_ih
+  | succ n n_ih =>
     by_cases hLn: (L.succ ≤ n)
     . -- pos
       have : n.succ ≤ n := calc
