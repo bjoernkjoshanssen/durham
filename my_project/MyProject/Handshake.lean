@@ -508,17 +508,14 @@ lemma min_div₀
     simp only [le_refl, and_true]
     tauto
 
-lemma min_div
-{a b: ℕ}
-: min (b / 2) (a / 2) ≤ min b a / 2
-:= by
-  cases Nat.le_or_le b a
-  . rw [min_comm (b/2) (a/2)]
+lemma min_div {a b: ℕ} :
+  min (b / 2) (a / 2) ≤ min b a / 2 := by
+  cases Nat.le_or_le b a with
+  | inl h =>
+    rw [min_comm (b/2) (a/2)]
     rw [min_comm b a]
-    rename_i h
     exact min_div₀ h
-  . rename_i h
-    exact min_div₀ h
+  | inr h => exact min_div₀ h
 
 theorem pts_earned_bound_div2 {α: Type} [OfNat α 0] [DecidableEq α] {b:ℕ} -- Apr 2, 2024
 {go: Fin b → α → α}
