@@ -65,14 +65,14 @@ def morF' {l:ℕ} -- 3/9/24 -- morF = "morphFin"
   (go : Fin b₀ → α → α) (moves : Fin l.succ →  (Fin b₀))
   : ℕ → (Fin b₁.succ) := by
   intro n
-  induction n
-  . exact f (moves 0) 0
-  rename_i n_1 _
-  by_cases h : (n_1 < l)
-  have h₁: n_1.succ < l.succ := by exact Nat.lt_succ.mpr h
-  let R := pathF go moves ⟨n_1.succ, Nat.lt.step h₁⟩
-  . exact f (moves ⟨n_1.succ,h₁⟩) R
-  . exact 0 -- a dummy value
+  induction n with
+  | zero => exact f (moves 0) 0
+  | succ n_1 _ =>
+    by_cases h : (n_1 < l)
+    have h₁: n_1.succ < l.succ := Nat.lt_succ.mpr h
+    let R := pathF go moves ⟨n_1.succ, Nat.lt.step h₁⟩
+    . exact f (moves ⟨n_1.succ,h₁⟩) R
+    . exact 0 -- a dummy value
 
 def pt_dirF {α:Type} [OfNat α 0] [DecidableEq α] {β : Type} (go : β → α → α)
  {l:ℕ} (j : Fin l.succ) (moves: Fin l → β) (ph : Fin l.succ → Bool)
@@ -293,9 +293,9 @@ def obtainWitness
   simp only [Fin.val_succ, Nat.rec_add_one, Fin.is_lt, Fin.eta, dite_eq_ite, ite_true,
     Fin.coe_castSucc]
 
-  induction l
-  . exact ⟨moves i,by rw [Fin.coe_fin_one i]⟩
-  . rename_i n _
+  induction l with
+  | zero => exact ⟨moves i,by rw [Fin.coe_fin_one i]⟩
+  | succ n _ =>
     by_cases h: (i = Fin.last n.succ)
     . exact ⟨moves (Fin.last n.succ),by subst h;simp⟩
     . exact ⟨moves i, rfl⟩
