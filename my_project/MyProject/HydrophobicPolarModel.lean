@@ -750,9 +750,9 @@ def morph {α:Type} [OfNat α 0] {b₀ b₁ : ℕ} (f : Fin b₀ → α → Fin 
 theorem morph_len {α:Type} [OfNat α 0] {b₀ b₁ : ℕ} (f : Fin b₀ → α → Fin b₁)
 (go₀ : Fin b₀ → α → α) (l : List (Fin b₀)) :
 (morph f go₀ l).length = l.length := by
-  induction l
-  . unfold morph; rfl
-  . rename_i head tail tail_ih
+  induction l with
+  |nil => unfold morph; rfl
+  |cons head tail tail_ih =>
     unfold morph; repeat (rw [List.length_cons])
     simp only [Nat.succ.injEq];
     rw [← tail_ih]; congr
@@ -1038,12 +1038,12 @@ theorem when_zero -- April 2, 2024
     . left;linarith
     . tauto
   let Q := pts_earned_bound_loc'_improved go ph fold
-  cases this
-  . rename_i h_1
+  cases this with
+  |inl h_1 =>
     subst h_1
     simp only [Nat.pred_zero, mul_zero, Nat.zero_div, nonpos_iff_eq_zero] at Q
     exact Q
-  . rename_i h_1
+  |inr h_1 =>
     subst h_1
     simp only [Nat.pred_succ, mul_zero, Nat.zero_div, nonpos_iff_eq_zero] at Q
     exact Q
@@ -1294,9 +1294,9 @@ theorem pts_earned_bound' {α: Type} [OfNat α 0] [DecidableEq α] {b:ℕ}
 theorem two_heads {α : Type} {k :ℕ} (v: Vector α k.succ) (w : List α) (hw : w ≠ [])
 (h : v.1 = w) : Vector.head v = List.head w hw := by
   symm at h
-  cases w
-  . tauto
-  . rename_i head tail
+  cases w with
+  |nil => tauto
+  |cons head tail =>
     simp only [List.head_cons]
     have : v = head ::ᵥ ⟨tail,by
       let v2 := v.2; rw [← h] at v2; simp only [List.length_cons,
@@ -1355,23 +1355,26 @@ theorem orderly_injective_helper {β:Type} (x : ℕ → β)
   (∃ i, i < j ∧ x i = a ∧ x i.succ = b) := by
   exists (Nat.find hj);let Q := Nat.find_spec hj
   constructor;exact Q.1;constructor;let R := h₂ (Nat.find hj) Q.1
-  cases R;
-  rename_i h
-  exact h;exfalso
-  have : (Nat.find hj) ≠ 0 := by
-    intro hc;rw [← hc] at h₀;rename_i h;have : a = b := Eq.trans h₀.symm h
-    exact hab this
-  obtain ⟨i,hi⟩ := Nat.exists_eq_succ_of_ne_zero this
-  have : Nat.find hj ≤ i := Nat.find_le (by
-    constructor
-    calc
-      i < i.succ := Nat.lt.base i
-      _ = Nat.find hj := hi.symm
-      _ < j := Q.1
-    rename_i h;rw [← hi];exact h
-  )
-  have : Nat.succ i ≤ i := Eq.trans_le (id hi.symm) this
-  contrapose this;exact Nat.not_succ_le_self i;exact Q.2
+  cases R with
+  |inl h => exact h
+  |inr h =>
+    exfalso
+    have hN : (Nat.find hj) ≠ 0 := by
+      intro hc;rw [← hc] at h₀;
+      have : a = b := Eq.trans h₀.symm h
+      exact hab this
+    obtain ⟨i,hi⟩ := Nat.exists_eq_succ_of_ne_zero hN
+    have : Nat.find hj ≤ i := Nat.find_le (by
+      constructor
+      calc
+        i < i.succ := Nat.lt.base i
+        _ = Nat.find hj := hi.symm
+        _ < j := Q.1
+      rw [← hi];exact h
+    )
+    have : Nat.succ i ≤ i := Eq.trans_le (id hi.symm) this
+    contrapose this;exact Nat.not_succ_le_self i;
+  exact Q.2
 
 
 theorem fin_fin {k:ℕ} {i:ℕ} {j:Fin k.succ} (h: i < j.1):
@@ -1402,30 +1405,32 @@ theorem orderly_injective_helper₁ {β:Type} (k:ℕ) (x : (Fin k.succ) → β)
   constructor
   exact h
   constructor
-  cases h₂ ⟨Nat.find hthis,fin_fi h
-  ⟩ h
-  rename_i h_1;exact h_1;rename_i h_1;exfalso
-  have hthis₀: (⟨(Nat.find hthis),fin_fi h⟩ : Fin k.succ) ≠ 0 := by
-    intro hc;
-    rw [← hc] at h₀;
-    have : a = b := Eq.trans h₀.symm h_1
-    exact hab this
-  have : Nat.find hthis ≠ 0 := by
-    intro hc
-    exact hthis₀ (Fin.ext hc)
-  obtain ⟨i,hi⟩ := Nat.exists_eq_succ_of_ne_zero this
-  have : Nat.find hthis ≤ i := Nat.find_le (by
-    constructor;
-    simp only [Fin.succ_mk];
-    simp_rw [← Nat.succ_eq_add_one,← hi];
-    exact h_1
-    calc
-      i < i.succ          := Nat.lt.base i
-      _ = Nat.find hthis  := hi.symm
-      _ < j               := (Nat.find_spec hthis).1
-  )
-  have : Nat.succ i ≤ i := Eq.trans_le (id hi.symm) this
-  contrapose this;exact Nat.not_succ_le_self i;exact (Nat.find_spec hthis).2
+  cases h₂ ⟨Nat.find hthis,fin_fi h⟩ h with
+  |inl h_1 => exact h_1
+  |inr h_1 =>
+    exfalso
+    have hthis₀: (⟨(Nat.find hthis),fin_fi h⟩ : Fin k.succ) ≠ 0 := by
+      intro hc;
+      rw [← hc] at h₀;
+      have : a = b := Eq.trans h₀.symm h_1
+      exact hab this
+    have : Nat.find hthis ≠ 0 := by
+      intro hc
+      exact hthis₀ (Fin.ext hc)
+    obtain ⟨i,hi⟩ := Nat.exists_eq_succ_of_ne_zero this
+    have : Nat.find hthis ≤ i := Nat.find_le (by
+      constructor;
+      simp only [Fin.succ_mk];
+      simp_rw [← Nat.succ_eq_add_one,← hi];
+      exact h_1
+      calc
+        i < i.succ          := Nat.lt.base i
+        _ = Nat.find hthis  := hi.symm
+        _ < j               := (Nat.find_spec hthis).1
+    )
+    have : Nat.succ i ≤ i := Eq.trans_le (id hi.symm) this
+    contrapose this;exact Nat.not_succ_le_self i
+  exact (Nat.find_spec hthis).2
 
 theorem orderly_injective_helper₂ (k:ℕ) (x : (Fin k.succ) → Fin 4)
   (h₀ : x 0 = 0)
@@ -1469,21 +1474,21 @@ lemma path_eq_path_morph {α:Type} [OfNat α 0] [DecidableEq α] {b₀ b₁ : �
 (g : is_embedding go₀ go₁ f)
 (moves : List (Fin b₀)):
   (path go₀ moves).1 = (path go₁ (morph f go₀ moves)).1 := by
-    induction moves
-    . unfold morph; simp only [List.length_nil]; repeat (rw [path_nil])
-    rename_i head tail tail_ih
-    rw [path_cons,g head (Vector.head (path go₀ tail)),tail_ih ]
-    unfold morph; simp only [List.length_cons];
-    rw [path_cons]; simp only [List.cons.injEq, and_true]
-    have : (Vector.head (path go₀ tail))
-         = (Vector.head (path go₁ (List.rec [] (fun head tail tail_ih => f head (Vector.head (path go₀ tail)) :: tail_ih) tail)))
-    := by
-      rw [two_heads (path go₀ tail) (path go₀ tail).1 (ne_nil_of_succ_length _) rfl]
-      simp_rw [tail_ih]
-      rw [two_heads]
-      unfold morph
-      simp
-    exact congrArg _ this
+    induction moves with
+    |nil => unfold morph; simp only [List.length_nil]; repeat (rw [path_nil])
+    |cons head tail tail_ih =>
+      rw [path_cons,g head (Vector.head (path go₀ tail)),tail_ih ]
+      unfold morph; simp only [List.length_cons];
+      rw [path_cons]; simp only [List.cons.injEq, and_true]
+      have : (Vector.head (path go₀ tail))
+          = (Vector.head (path go₁ (List.rec [] (fun head tail tail_ih => f head (Vector.head (path go₀ tail)) :: tail_ih) tail)))
+      := by
+        rw [two_heads (path go₀ tail) (path go₀ tail).1 (ne_nil_of_succ_length _) rfl]
+        simp_rw [tail_ih]
+        rw [two_heads]
+        unfold morph
+        simp
+      exact congrArg _ this
 
 lemma path_eq_path_morphᵥ {l:ℕ} {α:Type} [OfNat α 0] [DecidableEq α] {b₀ b₁ : ℕ} (f : Fin b₀ → α → Fin b₁)
 (go₀ : Fin b₀ → α → α) (go₁ : Fin b₁ → α → α)
@@ -1537,35 +1542,36 @@ theorem transform_of_embed {α:Type} [OfNat α 0] [DecidableEq α] {b₀ b₁ : 
 := by
   apply SetCoe.ext; unfold path_transformed; simp only;
   unfold is_embedding at h_embed;
-  induction l;
-  . simp only [List.length_nil];
+  induction l with
+  |nil =>
+    simp only [List.length_nil];
     unfold morph;
     simp only [List.length_nil]
     rfl
-  rename_i head tail tail_ih
-  have morph_cons : (morph f go₀ (head :: tail)) = (f head ((path go₀ tail).head)) :: (morph f go₀ (tail)) := rfl
-  rw [morph_cons];
-  repeat (rw [path_cons])
-  simp only [List.cons.injEq]
-  constructor
-  let a := (Vector.head (path go₀ tail))
-  rw [h_embed head a]
-  simp only
-  have : path go₁ (morph f go₀ tail)
-     = ⟨(path go₀ tail).1,(by rw [morph_len]; exact (path go₀ tail).2)⟩
-    := Vector.eq _ _ (by unfold Vector.toList; rw [← tail_ih])
-  rw [this]
-  have hau: ∃ a u, path go₀ tail = a ::ᵥ u := Vector.exists_eq_cons (path go₀ tail)
-  have : Vector.head ⟨
-        (path go₀ tail).1, ((by rw [morph_len]; exact (path go₀ tail).2)
-        : (path go₀ tail).1.length = (morph f go₀ tail).length.succ
-        )⟩ = Vector.head (path go₀ tail)
-  := by
-    obtain ⟨a,ha⟩ := hau
-    obtain ⟨u,hu⟩ := ha
-    rw [hu]; simp only [Vector.cons_val, Vector.head_cons]; rfl
-  . exact congr_arg _ this
-  . rw [tail_ih]
+  |cons head tail tail_ih =>
+    have morph_cons : (morph f go₀ (head :: tail)) = (f head ((path go₀ tail).head)) :: (morph f go₀ (tail)) := rfl
+    rw [morph_cons];
+    repeat (rw [path_cons])
+    simp only [List.cons.injEq]
+    constructor
+    let a := (Vector.head (path go₀ tail))
+    rw [h_embed head a]
+    simp only
+    have : path go₁ (morph f go₀ tail)
+      = ⟨(path go₀ tail).1,(by rw [morph_len]; exact (path go₀ tail).2)⟩
+      := Vector.eq _ _ (by unfold Vector.toList; rw [← tail_ih])
+    rw [this]
+    have hau: ∃ a u, path go₀ tail = a ::ᵥ u := Vector.exists_eq_cons (path go₀ tail)
+    have : Vector.head ⟨
+          (path go₀ tail).1, ((by rw [morph_len]; exact (path go₀ tail).2)
+          : (path go₀ tail).1.length = (morph f go₀ tail).length.succ
+          )⟩ = Vector.head (path go₀ tail)
+    := by
+      obtain ⟨a,ha⟩ := hau
+      obtain ⟨u,hu⟩ := ha
+      rw [hu]; simp only [Vector.cons_val, Vector.head_cons]; rfl
+    . exact congr_arg _ this
+    . rw [tail_ih]
 
 
 def pts_tot_bound {α:Type} [OfNat α 0] [DecidableEq α]
@@ -1804,13 +1810,11 @@ theorem path_append_suffix
   {b:ℕ} (go : Fin b → ℤ×ℤ → ℤ×ℤ) (tail : List (Fin b)) (head: List (Fin b)):
 (path go tail).1 <:+ (path go (head ++ tail)).1
 := by
-  induction head
-  simp only [List.nil_append]
-  exact List.suffix_rfl
-  rename_i head tail_1 tail_ih
-  calc
-  _ <:+ (path go (tail_1 ++ tail)).1 := tail_ih
-  _ <:+ _ := path_cons_suffix _ _ _
+  induction head with
+  |nil => simp only [List.nil_append]; exact List.suffix_rfl
+  |cons head tail_1 tail_ih =>
+    calc _ <:+ (path go (tail_1 ++ tail)).1 := tail_ih
+         _ <:+ _                            := path_cons_suffix _ _ _
 
 
 theorem nodup_path_preserved_under_suffixes
@@ -1836,11 +1840,10 @@ def NodupPath {b:ℕ} (go : Fin b → ℤ×ℤ → ℤ×ℤ)  : MonoPred b :=
   preserved_under_suffixes := nodup_path_preserved_under_suffixes _
 }
 
-def first_nonzero_entry (moves : List (Fin 4)) : Option (Fin 4) := by {
-  induction moves
-  .  exact none
-  .  rename_i head _ tail_ih;exact ite (tail_ih ≠ none) tail_ih (ite (head = 0) none head)
-}
+def first_nonzero_entry (moves : List (Fin 4)) : Option (Fin 4) := by
+  induction moves with
+  | nil                 => exact none
+  | cons head _ tail_ih => exact ite (tail_ih ≠ none) tail_ih (ite (head = 0) none head)
 
 -- Here's the Fin.find version:
 def where_first_nonzero_entryF {l:ℕ} (moves : Fin l → (Fin 4)) : Option (Fin l)
@@ -1976,37 +1979,51 @@ nearby rect u v := by
   apply hi at hc
   exists d
 
-lemma four_choices (b : Fin 4):
-b = 0 ∨ b = 1 ∨ b = 2 ∨ b = 3 := by
-  have : b.1 = 0 ∨ b.1 = 1 ∨ b.1 = 2 ∨ b.1 = 3 := by
-    cases Nat.lt_or_eq_of_le (Fin.is_le b)
-    rename_i h
-    cases Nat.lt_or_eq_of_le (Nat.lt_succ.mp h)
-    rename_i h_1;cases Nat.lt_or_eq_of_le (Nat.lt_succ.mp h_1);
-    rename_i h_2
-    left;exact Nat.lt_one_iff.mp h_2;tauto;tauto;tauto
-  cases this;
-  rename_i h
-  left;exact Fin.ext h;
-  rename_i h
-  cases h;
-  rename_i h_1;right;left;exact Fin.ext h_1
-  rename_i h_1;cases h_1;
-  rename_i h;right;right;left;exact Fin.ext h
-  rename_i h;right;right;right;exact Fin.ext h
+lemma four_choices₀ (b : Fin 4): b.1 = 0 ∨ b.1 = 1 ∨ b.1 = 2 ∨ b.1 = 3 := by
+  cases Nat.lt_or_eq_of_le (Fin.is_le b) with
+    |inr => tauto
+    |inl h =>
+      cases Nat.lt_or_eq_of_le (Nat.lt_succ.mp h) with
+        |inr => tauto
+        |inl h_1 =>
+          cases Nat.lt_or_eq_of_le (Nat.lt_succ.mp h_1) with
+            |inr => tauto
+            |inl h_2 => left;exact Nat.lt_one_iff.mp h_2;
+
+lemma four_choices (b : Fin 4): b = 0 ∨ b = 1 ∨ b = 2 ∨ b = 3 := by
+  cases four_choices₀ b with
+  |inl h => left;exact Fin.ext h;
+  |inr h =>
+    cases h with
+    |inl h_1 => right;left;exact Fin.ext h_1
+    |inr h_1 =>
+      cases h_1 with
+      |inl h => right;right; left;exact Fin.ext h
+      |inr h => right;right;right;exact Fin.ext h
 
 theorem rotateIndex_surjective : Function.Surjective rotateIndex := by
   intro b
-  cases (four_choices b);
-  rename_i h;subst h;exists 3;rename_i h;cases h;rename_i h_1;subst h_1;exists 2;rename_i h_1;
-  cases h_1;rename_i h;subst h;exists 0;rename_i h;subst h;exists 1
+  cases (four_choices b) with
+  |inl h₀ => subst h₀; exists 3
+  |inr h₀ =>
+    cases h₀ with
+    |inl h₁ => subst h₁; exists 2
+    |inr h₁ =>
+      cases h₁ with
+      |inl h₂ => subst h₂; exists 0
+      |inr h₂ => subst h₂; exists 1
 
 theorem reflectIndex_surjective : Function.Surjective reflectIndex := by
   intro b
-  cases (four_choices b);rename_i h_1;subst h_1;
-  exists 0;
-  rename_i h_1;cases h_1;rename_i h;subst h;exists 1;rename_i h;cases h;rename_i h_1;
-  subst h_1;exists 3;rename_i h_1;subst h_1;exists 2
+  cases (four_choices b) with
+  |inl h₀ => subst h₀; exists 0
+  |inr h₀ =>
+    cases h₀ with
+    |inl h₁ => subst h₁; exists 1
+    |inr h₁ =>
+      cases h₁ with
+      |inl h₂ => subst h₂; exists 3
+      |inr h₂ => subst h₂; exists 2
 
 theorem rotate_injective : Function.Injective rotate := by
   intro x y hxy;unfold rotate at hxy;simp only [Prod.mk.injEq, neg_inj] at hxy ;apply Prod.ext;tauto;tauto
@@ -2123,42 +2140,40 @@ lemma reflect_morf_list (moves: List (Fin 4)) (k : Fin (path rect moves).length)
   reflect ((path rect                  moves ).get  k) =
           (path rect (morf_list reflectIndex moves)).get ⟨k.1, ref_length₀_morf moves k⟩
 := by
-  induction moves
-  . (have : k = 0 := Fin.ext (Fin.coe_fin_one k));subst this;rfl
+  induction moves with
+  |nil => (have : k = 0 := Fin.ext (Fin.coe_fin_one k));subst this;rfl
+  |cons hd tl tail_ih =>
+    rw [path_cons_vec]
+    by_cases h : k = 0
+    . subst h
+      simp only [List.length_cons, Vector.get_zero, Vector.head_cons, Fin.val_zero,
+        Fin.zero_eta]
+      rw [reflect_basic]
+      have : reflect (path rect tl).head = (path rect (morf_list (reflectIndex) tl)).head
+      := by
+        let Q := tail_ih 0;
+        simp only [Vector.get_zero, Fin.val_zero, Fin.zero_eta] at Q ;exact Q
+      exact congr_arg _ this
 
-  rename Fin 4 => hd; rename List (Fin 4) => tl
-  rw [path_cons_vec]
-  by_cases h : k = 0
-  . subst h
-    simp only [List.length_cons, Vector.get_zero, Vector.head_cons, Fin.val_zero,
-      Fin.zero_eta]
-    rw [reflect_basic]
-    have : reflect (path rect tl).head = (path rect (morf_list (reflectIndex) tl)).head
-    := by
-      rename_i tail_ih
-      let Q := tail_ih 0;
-      simp only [Vector.get_zero, Fin.val_zero, Fin.zero_eta] at Q ;exact Q
-    exact congr_arg _ this
-
-  obtain ⟨s,hs⟩ := Fin.eq_succ_of_ne_zero h
-  have g₀: ((rect hd (path rect tl).head) ::ᵥ path rect tl).get (Fin.succ s)
-                                           = (path rect tl).get s := rfl
-  have g₄: ((rect hd (path rect tl).head) ::ᵥ path rect tl).get k
-                                           = (path rect tl).get s := by rw [hs,← g₀]
-  rw [g₄]
-  have g₁: path rect (morf_list reflectIndex (hd :: tl))
-         = path rect ((reflectIndex hd ) :: (morf_list reflectIndex (tl))) := rfl
-  rw [g₁,path_cons_vec]
-  have hs': k.1 = s.1.succ := Fin.mk_eq_mk.mp hs
-  have g₃: k.1 < (morf_list reflectIndex (hd :: tl)).length.succ
-    := by rw [morf_len];simp
-  have g₂: (
-      rect (reflectIndex hd)
-      ((path rect (morf_list reflectIndex tl)).head)
-    ::ᵥ path rect (morf_list reflectIndex tl)).get ⟨k.1, g₃⟩
-     = (path rect (morf_list reflectIndex tl)).get ⟨s, morf_path_succ_aux k hs'⟩
-    := by simp_rw [hs'];norm_cast
-  . rename_i tail_ih;rw [g₂,tail_ih s]
+    obtain ⟨s,hs⟩ := Fin.eq_succ_of_ne_zero h
+    have g₀: ((rect hd (path rect tl).head) ::ᵥ path rect tl).get (Fin.succ s)
+                                            = (path rect tl).get s := rfl
+    have g₄: ((rect hd (path rect tl).head) ::ᵥ path rect tl).get k
+                                            = (path rect tl).get s := by rw [hs,← g₀]
+    rw [g₄]
+    have g₁: path rect (morf_list reflectIndex (hd :: tl))
+          = path rect ((reflectIndex hd ) :: (morf_list reflectIndex (tl))) := rfl
+    rw [g₁,path_cons_vec]
+    have hs': k.1 = s.1.succ := Fin.mk_eq_mk.mp hs
+    have g₃: k.1 < (morf_list reflectIndex (hd :: tl)).length.succ
+      := by rw [morf_len];simp
+    have g₂: (
+        rect (reflectIndex hd)
+        ((path rect (morf_list reflectIndex tl)).head)
+      ::ᵥ path rect (morf_list reflectIndex tl)).get ⟨k.1, g₃⟩
+      = (path rect (morf_list reflectIndex tl)).get ⟨s, morf_path_succ_aux k hs'⟩
+      := by simp_rw [hs'];norm_cast
+    . rw [g₂,tail_ih s]
 
 
 -- Finished February 26, 2024, although the proof is hard to understand:
@@ -2167,23 +2182,21 @@ lemma reflect_morph (moves: List (Fin 4)) (k : Fin (path rect moves).length):
   reflect ((path rect                  moves ).get  k) =
           (path rect (morph reeu rect moves)).get ⟨k.1, ref_length₀ moves k⟩
 := by
-  induction moves
-  . -- nil
-    (have : k = 0 := Fin.ext (Fin.coe_fin_one k));subst this;rfl
-  . -- cons
-    rename Fin 4 => hd; rename List (Fin 4) => tl
+  induction moves with
+  | nil => (have : k = 0 := Fin.ext (Fin.coe_fin_one k));subst this;rfl
+  | cons hd tl tail_ih =>
     rw [path_cons_vec]
     by_cases h : k = 0
     . -- pos
       subst h; simp only [List.length_cons, Vector.get_zero, Vector.head_cons,
         Fin.val_zero, Fin.zero_eta];
-      rw [reflect_basic];rename_i tail_ih;let Q := tail_ih 0;
+      rw [reflect_basic];let Q := tail_ih 0;
       simp only [Vector.get_zero, Fin.val_zero, Fin.zero_eta] at Q ;exact congr_arg _ Q
     . -- neg
       obtain ⟨s,hs⟩ := Fin.eq_succ_of_ne_zero h
       subst hs
       simp only [List.length_cons, Vector.get_cons_succ, Fin.val_succ]
-      rename_i tail_ih;rw [tail_ih s]
+      rw [tail_ih s]
       have g₁: path κ (morph reeu rect (hd :: tl))
              = path κ ((     reeu       hd ((path κ tl).head)) :: (morph reeu κ tl)) := rfl
       rw [g₁, path_cons_vec]
@@ -2193,24 +2206,22 @@ lemma rotate_morph (moves: List (Fin 4)) (k : Fin (path rect moves).length):
   rotate ((path rect                  moves ).get  k) =
           (path rect (morph roeu rect moves)).get ⟨k.1, rot_length₀ moves k⟩
 := by
-  induction moves
-  . -- nil
-    (have : k = 0 := Fin.ext (Fin.coe_fin_one k));subst this;rfl
-  . -- cons
-    rename Fin 4 => hd; rename List (Fin 4) => tl
+  induction moves with
+  | nil => (have : k = 0 := Fin.ext (Fin.coe_fin_one k));subst this;rfl
+  | cons hd tl tail_ih =>
     rw [path_cons_vec]
     by_cases h : k = 0
     . -- pos
       subst h;
       simp only [List.length_cons, Vector.get_zero, Vector.head_cons, Fin.val_zero,
         Fin.zero_eta];
-      rw [rotate_basic];rename_i tail_ih;let Q := tail_ih 0;
+      rw [rotate_basic];let Q := tail_ih 0;
       simp only [Vector.get_zero, Fin.val_zero, Fin.zero_eta] at Q ;exact congr_arg _ Q
     . -- neg
       obtain ⟨s,hs⟩ := Fin.eq_succ_of_ne_zero h
       subst hs
       simp only [List.length_cons, Vector.get_cons_succ, Fin.val_succ]
-      rename_i tail_ih;rw [tail_ih s]
+      rw [tail_ih s]
       have g₁: path κ (morph ρ rect (hd :: tl))
              = path κ ((     ρ       hd ((path κ tl).head)) :: (morph ρ κ tl)) := rfl
       rw [g₁, path_cons_vec]
@@ -2423,40 +2434,35 @@ theorem towards_orderlyish
   pts_tot' κ ph (π κ moves')
   := by
   let m₀ := moves;let m₁ := (σ ρ κ m₀);let m₂ := (σ ρ κ m₁);let m₃ := (σ ρ κ m₂)
-  cases rotate_until_right (moves.get 0);
-  -- inl
-  . exists m₀
-  . -- inr
-    rename_i h;cases h;
-    . -- inr.inl
+  cases rotate_until_right (moves.get 0) with
+  | inl => exists m₀
+  | inr h =>
+    cases h with
+    |inl h_1 =>
       exists m₁
       constructor
       . simp only [Vector.get_zero];
-        rename_i h_1
         rw [← h_1];
         simp only [Vector.get_zero];symm;
         simp only [Vector.get_zero] at h_1 ;
         exact rotate_head _
       . exact rotate_pts_tot ph m₀
-    . -- inr.inr
-      rename_i h_1
-      cases h_1;
-      . -- inr.inr.inl
+    |inr h_1 =>
+      cases h_1 with
+      |inl h =>
         exists m₂
         constructor
         . -- inr.inr.inl.left
-          rename_i h;
           rw [← h];simp only [Vector.get_zero]
           rw [rotate_head m₀, rotate_head m₁]
         . -- inr.inr.inl.right
           calc
             pts_tot' κ ph (π κ m₀) ≤ pts_tot' κ ph (π κ m₁):= rotate_pts_tot ph moves
             _                      ≤ _ := rotate_pts_tot ph m₁
-      . -- inr.inr.inr
+      |inr h =>
         exists m₃;
         constructor;
-        . rename_i h;
-          rw [← h];simp only [Vector.get_zero]
+        . rw [← h];simp only [Vector.get_zero]
           rw [rotate_head m₀,rotate_head m₁,rotate_head m₂]
 
         . calc
@@ -2513,11 +2519,13 @@ theorem towards_orderly
       . -- neg.intr.right.left
         intro j₁ hj₁;by_cases h : j₁ < j;let Q := hj.1 j₁ h
         -- now it's easy using morf
-        . cases Q
-          . intro hc;unfold morf at hc; simp only [Vector.get_map] at hc ;
-            rename_i h_1;rw [h_1] at hc;contrapose hc;decide
-          . intro hc;unfold morf at hc; simp only [Vector.get_map] at hc ;
-            rename_i h_1;rw [h_1] at hc;contrapose hc;decide
+        . cases Q with
+          |inl h_1 =>
+            intro hc;unfold morf at hc; simp only [Vector.get_map] at hc ;
+            rw [h_1] at hc;contrapose hc;decide
+          |inr h_1 =>
+            intro hc;unfold morf at hc; simp only [Vector.get_map] at hc ;
+            rw [h_1] at hc;contrapose hc;decide
         . by_cases he : j₁ = j
           . -- pos
             subst he;rw [this];symm;decide
@@ -2526,9 +2534,9 @@ theorem towards_orderly
             have : j < j₁ := by tauto
             let Q := hj.2
             let R := hj₁ j this
-            cases R
-            . rename_i h_1;unfold morf at h_1; simp only [Vector.get_map] at h_1 ;rw [Q] at h_1;contrapose h_1;decide
-            . rename_i h_1;unfold morf at h_1; simp only [Vector.get_map] at h_1 ;rw [Q] at h_1;contrapose h_1;decide
+            cases R with
+            |inl h_1 => unfold morf at h_1; simp only [Vector.get_map] at h_1 ;rw [Q] at h_1;contrapose h_1;decide
+            |inr h_1 => unfold morf at h_1; simp only [Vector.get_map] at h_1 ;rw [Q] at h_1;contrapose h_1;decide
       . -- neg.intr.right.right
         calc
         _ ≤ pts_tot' κ ph (π κ moves₀) := hmoves₀.2
