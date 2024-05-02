@@ -64,14 +64,13 @@ example : go_E ∘ go_Z = id := by
   apply funext; intro x; unfold go_E go_Z pm sm mp sp; simp;
   by_cases h : (Even x.2); rw [if_pos h]; simp;
 
-  cases x;
-  rename_i fst snd
+
+  let (fst, snd) := x
   simp; simp at h; have : Odd (snd + 1) := Even.add_one h
   . exact Int.odd_iff_not_even.mp this
   rw [if_neg h]; simp;
 
-  cases x;
-  rename_i fst snd
+  let (fst, snd) := x
   simp; simp at h; have : Odd snd := Int.odd_iff_not_even.mpr h
   . exact Int.even_add_one.mpr h
 
@@ -79,14 +78,12 @@ example : go_W ∘ go_X = id := by
   apply funext; intro x; unfold go_W go_X sm mm sp pp; simp;
   by_cases h : (Even x.2); rw [if_pos h]; simp;
 
-  cases x;
-  rename_i fst snd
+  let (fst, snd) := x
   simp; simp at h; have : Odd (snd + 1) := Even.add_one h
   . exact Int.odd_iff_not_even.mp this
   rw [if_neg h];
 
-  cases x;
-  rename_i fst snd
+  let (fst, snd) := x
   simp at h; have : Odd snd := Int.odd_iff_not_even.mpr h
   simp
   . exact Int.even_add_one.mpr h
